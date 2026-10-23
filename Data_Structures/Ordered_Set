@@ -1,0 +1,35 @@
+#include <iostream>
+
+// 1. Cabeceras obligatorias para PBDS
+#include <ext/pb_ds/assoc_container.hpp> 
+#include <ext/pb_ds/tree_policy.hpp> 
+
+// 2. Espacios de nombres necesarios
+using namespace std;
+using namespace __gnu_pbds; 
+
+// 3. El "macro" o alias clásico para definir el ordered_set
+template <typename T>
+using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+
+int main() {
+    // Invocación del contenedor
+    ordered_set<int> st;
+
+    // Insertar elementos de manera normal
+    st.insert(10);
+    st.insert(40);
+    st.insert(30);
+    st.insert(20);
+
+    // --- LAS DOS FUNCIONES EXTRA QUE NO TIENE EL SET NORMAL ---
+
+    // 1. find_by_order(k): Devuelve un iterador al k-ésimo elemento (0-indexed)
+    auto it = st.find_by_order(2); 
+    cout << "El elemento en el indice 2 es: " << *it << "\n"; // Imprime 30
+
+    // 2. order_of_key(X): Devuelve cuántos elementos son estrictamente menores que X
+    cout << "Elementos menores que 35: " << st.order_of_key(35) << "\n"; // Imprime 3 (10, 20, 30)
+
+    return 0;
+}
