@@ -21,6 +21,21 @@ void dfs(int u) {
     }
   }
 }
+
+//DISTANCIA SEGUN ALGUN NODO A TODOS LOS DEMÁS.(ALTURA RESPECTO ALGUN NODO arboles.)
+vector<int> prof(N, 0);
+//fill(vector.begin(),vector.end(),value);
+void dfs(int u) {
+  vis[u] = true;
+  for (auto v: g[u]) {
+    if (!vis[v]) {
+      prof[v] = prof[u] + 1;
+      dfs(v);
+    }
+  }
+}
+
+
 int32_t main() {
   ios_base::sync_with_stdio(0);
   cin.tie(0);
