@@ -1,0 +1,40 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int main(){
+    int n, m; cin >> n >> m;
+    vector<vector<char>> v(n, vector<char>(m));
+    vector<vector<int>> distancias(n,vector<int>(m,INT_MAX));
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            char c; cin >> c;
+            v[i][j] = c;
+        }
+    }
+
+    deque<pair<int,int>> q;
+    q.push_back({0,0});
+    distancias[0][0] = 0;
+    while(!q.empty()){
+        int x = q.front().first;
+        int y = q.front().second;
+        vector<int> vx={1,0,-1,0};
+        vector<int> vy ={0,1,0,-1};
+        q.pop_front();
+        for(int z=0; z<=3;z++){
+            int ax = x+vx[z];
+            int ay = y+vy[z];
+            if(ax >= 0 and ax <= n-1 and ay >= 0 and ay <= m-1){
+                int w = 0;
+                if(v[ax][ay] == '#') w = 1;
+                if(distancias[ax][ay] > distancias[x][y] + w){
+                    distancias[ax][ay] = distancias[x][y] + w;
+                    if(w == 0) q.push_front({ax,ay});
+                    else q.push_back({ax,ay});
+                }
+            }
+        }
+        
+    }
+    cout << distancias[n-1][m-1] << "\n";
+}
