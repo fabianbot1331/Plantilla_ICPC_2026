@@ -1,0 +1,87 @@
+
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+using namespace std;
+using namespace __gnu_pbds;
+
+using ll = long long;
+
+// ORDERED MULTISET (permite duplicados)
+template<class T>
+using ordered_multiset = tree<
+    pair<T,int>, null_type, less<pair<T,int>>,
+    rb_tree_tag, tree_order_statistics_node_update
+>;
+
+// ORDERED MAP (clave -> valor + k-esimo)
+template<class K, class V>
+using ordered_map = tree<
+    K, V, less<K>,
+    rb_tree_tag, tree_order_statistics_node_update
+>;
+
+// CUSTOM HASH (int y long long)
+struct custom_hash {
+    static uint64_t splitmix64(uint64_t x) {
+        x += 0x9e3779b97f4a7c15ULL;
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+        return x ^ (x >> 31);
+    }
+
+    size_t operator()(uint64_t x) const {
+        static const uint64_t RANDOM =
+            chrono::steady_clock::now()
+                .time_since_epoch().count();
+        return splitmix64(x + RANDOM);
+    }
+};
+
+// GP HASH TABLE (similar a unordered_map)
+template<class K, class V>
+using hash_map = gp_hash_table<K, V, custom_hash>;
+
+// HASH SET (similar a unordered_set)
+template<class T>
+using hash_set = gp_hash_table<T, null_type, custom_hash>;
+
+int main() {
+    // ORDERED MULTISET
+    ordered_multiset<int> ms;
+    int id = 0;
+    ms.insert({5, id++});
+    ms.insert({5, id++});
+    ms.insert({10, id++});
+
+    cout << ms.order_of_key({5, INT_MIN}) << "\n"; // < 5
+    cout << ms.order_of_key({5, INT_MAX}) << "\n"; // <= 5
+    cout << ms.find_by_order(1)->first << "\n";    // k-esimo (0-index)
+    ms.erase({5, 0});                             // eliminar uno
+
+    // ORDERED MAP
+    ordered_map<int, int> om;
+    om[10] = 100;
+    om[20] = 200;
+
+    cout << om.order_of_key(20) << "\n";       // claves < 20
+    cout << om.find_by_order(0)->first << "\n"; // primera clave
+    om.erase(10);
+
+    // GP HASH TABLE
+    hash_map<ll, int> mp;
+    mp[100] = 5;
+    mp[100]++;
+    cout << mp[100] << "\n";
+    if (mp.find(100) != mp.end()) cout << "Existe\n";
+    mp.erase(100);
+
+    // HASH SET
+    hash_set<ll> hs;
+    hs.insert(10);
+    hs.insert(20);
+    if (hs.find(10) != hs.end()) cout << "Existe\n";
+    hs.erase(10);
+
+    return 0;
+}
