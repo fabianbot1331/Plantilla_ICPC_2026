@@ -46,6 +46,13 @@ using hash_map = gp_hash_table<K, V, custom_hash>;
 template<class T>
 using hash_set = gp_hash_table<T, null_type, custom_hash>;
 
+template<class T>
+void erase_one(ordered_multiset<T>& ms, T x) {
+    auto it = ms.lower_bound({x, INT_MIN});
+    if (it != ms.end() && it->first == x)
+        ms.erase(it);
+}
+
 int main() {
     // ORDERED MULTISET
     ordered_multiset<int> ms;
@@ -58,6 +65,7 @@ int main() {
     cout << ms.order_of_key({5, INT_MAX}) << "\n"; // <= 5
     cout << ms.find_by_order(1)->first << "\n";    // k-esimo (0-index)
     ms.erase({5, 0});                             // eliminar uno
+    erase_one(ms,5);
 
     // ORDERED MAP
     ordered_map<int, int> om;
