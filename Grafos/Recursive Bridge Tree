@@ -100,6 +100,7 @@ struct Bridges {
     }
 };
 
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -138,7 +139,7 @@ int main() {
     }
     */
 
-    // 6. Consultar a qué componente 2ECC pertenece un nodo
+    // 6. Consultar a que componente 2ECC pertenece un nodo
     // int c = B.comp[u];
 
     // 7. Consultar si dos nodos pertenecen a la misma 2ECC
@@ -147,14 +148,14 @@ int main() {
     // 8. Cantidad de componentes 2ECC
     // int k = B.cnt;
 
-    // 9. Agrupar todos los nodos por componente 2ECC
+    // 9. Agrupar nodos por componente 2ECC
     vector<vector<int>> components(B.cnt);
 
     for (int i = 0; i < n; i++) {
         components[B.comp[i]].push_back(i);
     }
 
-    // 10. Imprimir las componentes (solución del problema)
+    // 10. Imprimir componentes 2ECC
     cout << B.cnt << "\n";
 
     for (int i = 0; i < B.cnt; i++) {
@@ -164,18 +165,89 @@ int main() {
         cout << "\n";
     }
 
-    // 11. Recorrer el Bridge Tree (bosque de puentes)
+    // 11. Recorrer vecinos del Bridge Tree
     /*
     for (int c = 0; c < B.cnt; c++) {
         for (int to : B.tree[c]) {
-            // Existe un puente entre las componentes c y to
+            // c y to estan conectados por un puente
         }
     }
     */
 
-    // 12. Consultar tin y low de un vértice
+    // 12. BFS del Bridge Tree - O(B.cnt)
+    /*
+    int start = 0; // Componente inicial
+
+    vector<int> dist(B.cnt, -1);
+    vector<int> parent(B.cnt, -1);
+    queue<int> q;
+
+    q.push(start);
+    dist[start] = 0;
+
+    int far = start; // Componente mas lejana
+
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+
+        for (int v : B.tree[u]) {
+            if (dist[v] != -1) continue;
+
+            dist[v] = dist[u] + 1;
+            parent[v] = u;
+            q.push(v);
+
+            if (dist[v] > dist[far])
+                far = v;
+        }
+    }
+
+    // dist[v] = cantidad de puentes desde start hasta v
+    // parent[v] = componente anterior en el recorrido
+    // far = componente mas lejana desde start
+    // dist[far] = distancia maxima encontrada
+    */
+
+    // 13. Diametro del Bridge Tree (dos BFS)
+    /*
+    auto bfs = [&](int start) {
+        vector<int> dist(B.cnt, -1);
+        queue<int> q;
+
+        q.push(start);
+        dist[start] = 0;
+        int far = start;
+
+        while (!q.empty()) {
+            int u = q.front();
+            q.pop();
+
+            for (int v : B.tree[u]) {
+                if (dist[v] != -1) continue;
+
+                dist[v] = dist[u] + 1;
+                q.push(v);
+
+                if (dist[v] > dist[far])
+                    far = v;
+            }
+        }
+
+        return pair<int,int>{far, dist[far]};
+    };
+
+    // Valido si el grafo original es conexo
+    auto [a, d1] = bfs(0);
+    auto [b, diameter] = bfs(a);
+
+    cout << diameter << "\n";
+    */
+
+    // 14. Consultar tin y low
     // int discovery = B.tin[u];
     // int lowest = B.low[u];
 
     return 0;
 }
+
