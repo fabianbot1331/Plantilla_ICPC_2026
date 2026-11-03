@@ -57,18 +57,21 @@ struct DFSTree { // 0-indexed, undirected graph
             direccion[id] = {u, v};
 
             if (vis[v]) {
-                // ===== BACK EDGE =====
-                // v ya fue visitado.
-                // En un DFS no dirigido, esta arista
-                // conecta u con un ancestro suyo
-                // (salvo el caso de un self-loop).
-
-                // Actualizar low usando tin[v]
+                if (tin[v] >= tin[u]) continue;
+            
+                // Ahora sí, v es ancestro de u
                 low[u] = min(low[u], tin[v]);
-
-                // AQUÍ: operaciones para back edges
-
-            } else {
+            
+                nodo_nuevo[u] = v;
+            
+                int z = par[u];
+                while (z != v) {
+                    nodo_nuevo[z] = v;
+                    z = par[z];
+                }
+            
+                nodo_nuevo[v] = v;
+                } else {
                 // ===== TREE EDGE =====
                 // v es descubierto por primera vez.
 
