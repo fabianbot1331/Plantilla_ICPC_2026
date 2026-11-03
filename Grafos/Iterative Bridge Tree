@@ -1,0 +1,133 @@
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Bridges {
+    int n, timer = 0, cnt = 0;
+    vector<vector<pair<int,int>>> adj;
+    vector<pair<int,int>> edges;
+    vector<int> tin, low, comp;
+    vector<bool> is_bridge;
+    vector<vector<int>> tree;
+    unordered_map<long long, int> edgeId;
+
+    Bridges(int n) : n(n), adj(n), tin(n, -1),
+                     low(n), comp(n, -1) {}
+
+    long long key(int u, int v) const {
+        if (u > v) swap(u, v);
+        return 1LL * u * n + v;
+    }
+
+    void addEdge(int u, int v) {
+        int id = edges.size();
+        edges.push_back({u, v});
+        adj[u].push_back({v, id});
+        adj[v].push_back({u, id});
+        is_bridge.push_back(false);
+        edgeId[key(u, v)] = id;
+    }
+
+    void dfs(int v, int pe = -1) {
+        tin[v] = low[v] = timer++;
+
+        for (auto [to, id] : adj[v]) {
+            if (id == pe) continue;
+
+            if (tin[to] != -1) {
+                low[v] = min(low[v], tin[to]);
+            } else {
+                dfs(to, id);
+                low[v] = min(low[v], low[to]);
+
+                if (low[to] > tin[v])
+                    is_bridge[id] = true;
+            }
+        }
+    }
+
+    void findBridges() {
+        timer = 0;
+        fill(tin.begin(), tin.end(), -1);
+        fill(is_bridge.begin(), is_bridge.end(), false);
+
+        for (int i = 0; i < n; i++)
+            if (tin[i] == -1)
+                dfs(i);
+    }
+
+    // Consultar si la arista (u, v) es puente
+    bool isBridge(int u, int v) const {
+        auto it = edgeId.find(key(u, v));
+        if (it == edgeId.end()) return false;
+        return is_bridge[it->second];
+    }
+
+    void dfsComp(int v, int c) {
+        comp[v] = c;
+
+        for (auto [to, id] : adj[v]) {
+            if (is_bridge[id] || comp[to] != -1)
+                continue;
+            dfsComp(to, c);
+        }
+    }
+
+    void buildTree() {
+        fill(comp.begin(), comp.end(), -1);
+        cnt = 0;
+
+        for (int i = 0; i < n; i++)
+            if (comp[i] == -1)
+                dfsComp(i, cnt++);
+
+        tree.assign(cnt, {});
+
+        for (int id = 0; id < (int)edges.size(); id++) {
+            if (!is_bridge[id]) continue;
+
+            auto [u, v] = edges[id];
+            int a = comp[u], b = comp[v];
+
+            tree[a].push_back(b);
+            tree[b].push_back(a);
+        }
+    }
+
+    void build() {
+        findBridges();
+        buildTree();
+    }
+};
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n, m;
+    cin >> n >> m;
+
+    Bridges B(n);
+
+    for (int i = 0; i < m; i++) {
+        int u, v;
+        cin >> u >> v;
+        --u; --v; // Entrada 1-indexed
+        B.addEdge(u, v);
+    }
+
+    B.build();
+
+    int q;
+    cin >> q;
+
+    while (q--) {
+        int u, v;
+        cin >> u >> v;
+        --u; --v;
+
+        cout << (B.isBridge(u, v) ? "YES" : "NO") << '\n';
+    }
+
+    return 0;
+}
