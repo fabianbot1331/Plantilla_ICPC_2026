@@ -1,0 +1,201 @@
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct DFSTree { // 0-indexed, undirected graph
+    int n, timer = 0, components = 0;
+
+    // adj[u] = {vecino, id_arista}
+    vector<vector<pair<int,int>>> adj;
+
+    // tree[u] = hijos de u en el DFS Tree
+    vector<vector<int>> tree;
+
+    vector<int> par, depth, tin, tout, low, sz;
+    vector<bool> vis, bridge;
+
+    // Aristas originales y sus direcciones (por ID)
+    vector<pair<int,int>> edges, direccion;
+
+    DFSTree(int n) : n(n), adj(n), tree(n),
+        par(n, -1), depth(n, 0),
+        tin(n, -1), tout(n, -1),
+        low(n, -1), sz(n, 0),
+        vis(n, false) {}
+
+    // Agregar arista no dirigida
+    // Cada arista recibe un ID: 0, 1, 2...
+    void addEdge(int u, int v) {
+        int id = edges.size();
+        edges.push_back({u, v});
+        adj[u].push_back({v, id});
+        adj[v].push_back({u, id});
+
+        bridge.push_back(false);
+        direccion.push_back({-1, -1});
+    }
+
+    void dfs(int u, int parentEdge = -1) {
+
+        // ===== ENTRADA AL NODO =====
+        vis[u] = true;
+        tin[u] = low[u] = timer++;
+        sz[u] = 1;
+
+        // AQUÍ: operaciones al entrar a u
+
+        for (auto [v, id] : adj[u]) {
+
+            // Ignorar la arista por la que llegamos
+            // Usamos ID para soportar aristas múltiples
+            if (id == parentEdge) continue;
+
+            // La arista ya fue procesada y orientada
+            if (direccion[id].first != -1) continue;
+
+            // Orientar u -> v (tree edge o back edge)
+            direccion[id] = {u, v};
+
+            if (vis[v]) {
+                // ===== BACK EDGE =====
+                // v ya fue visitado.
+                // En un DFS no dirigido, esta arista
+                // conecta u con un ancestro suyo
+                // (salvo el caso de un self-loop).
+
+                // Actualizar low usando tin[v]
+                low[u] = min(low[u], tin[v]);
+
+                // AQUÍ: operaciones para back edges
+
+            } else {
+                // ===== TREE EDGE =====
+                // v es descubierto por primera vez.
+
+                par[v] = u;
+                depth[v] = depth[u] + 1;
+                tree[u].push_back(v);
+
+                // AQUÍ: operaciones ANTES de dfs(v)
+                // Ej: acumular datos o pasar estados
+
+                dfs(v, id);
+
+                // ===== REGRESO DEL HIJO =====
+                // El subárbol de v ya está procesado.
+
+                sz[u] += sz[v];
+                low[u] = min(low[u], low[v]);
+
+                // AQUÍ: operaciones DESPUÉS de dfs(v)
+                // Ej: Tree DP, sumar respuestas de hijos
+
+                // ===== DETECTAR PUENTE =====
+                // Si el subárbol de v no puede llegar
+                // a u ni a un ancestro de u,
+                // entonces (u,v) es puente.
+                if (low[v] > tin[u]) {
+                    bridge[id] = true;
+                }
+
+                // AQUÍ: detectar articulaciones,
+                // clasificar aristas, etc.
+            }
+        }
+
+        // ===== SALIDA DEL NODO =====
+        // Intervalo del subárbol: [tin[u], tout[u])
+        tout[u] = timer;
+
+        // AQUÍ: operaciones al terminar u
+    }
+
+    // Ejecuta DFS en todas las componentes
+    void build() {
+        for (int u = 0; u < n; u++) {
+            if (!vis[u]) {
+                components++;
+                dfs(u);
+            }
+        }
+    }
+
+    // ¿La arista con ID id es puente?
+    bool isBridge(int id) {
+        return bridge[id];
+    }
+
+    // ¿u es ancestro de v?
+    // Incluye el caso u == v
+    bool isAncestor(int u, int v) {
+        return tin[u] <= tin[v] &&
+               tout[v] <= tout[u];
+    }
+
+    // Obtener todas las aristas puente
+    vector<pair<int,int>> getBridges() {
+        vector<pair<int,int>> ans;
+
+        for (int id = 0; id < (int)edges.size(); id++) {
+            if (bridge[id]) {
+                ans.push_back(edges[id]);
+            }
+        }
+        return ans;
+    }
+
+    // Camino desde la raíz DFS hasta u
+    vector<int> getPath(int u) {
+        vector<int> path;
+
+        if (!vis[u]) return path;
+
+        while (u != -1) {
+            path.push_back(u);
+            u = par[u];
+        }
+
+        reverse(path.begin(), path.end());
+        return path;
+    }
+};
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n, m;
+    cin >> n >> m;
+
+    DFSTree d(n);
+
+    for (int i = 0; i < m; i++) {
+        int u, v;
+        cin >> u >> v;
+        --u; --v;
+        d.addEdge(u, v);
+    }
+
+    d.build();
+
+    // Ejemplo: orientación fuertemente conexa
+    // Requiere grafo conexo y sin puentes
+    bool possible = (d.components == 1);
+
+    for (int i = 0; i < m; i++) {
+        if (d.isBridge(i)) {
+            possible = false;
+            break;
+        }
+    }
+
+    if (!possible) {
+        cout << 0 << "\n";
+    } else {
+        for (auto [u, v] : d.direccion) {
+            cout << u + 1 << " " << v + 1 << "\n";
+        }
+    }
+
+    return 0;
+}
