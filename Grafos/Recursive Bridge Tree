@@ -109,25 +109,73 @@ int main() {
 
     Bridges B(n);
 
+    // 1. Agregar aristas (0-indexed)
     for (int i = 0; i < m; i++) {
         int u, v;
         cin >> u >> v;
-        --u; --v; // Entrada 1-indexed
         B.addEdge(u, v);
     }
 
+    // 2. Construir puentes, componentes 2ECC y Bridge Tree
     B.build();
 
-    int q;
-    cin >> q;
+    // Alternativa: si solo necesitas detectar puentes
+    // B.findBridges();
 
-    while (q--) {
-        int u, v;
-        cin >> u >> v;
-        --u; --v;
+    // 3. Consultar si una arista (u, v) es puente
+    // bool ans = B.isBridge(u, v);
 
-        cout << (B.isBridge(u, v) ? "YES" : "NO") << '\n';
+    // 4. Consultar si una arista por ID es puente
+    // bool ans = B.is_bridge[id];
+
+    // 5. Listar todos los puentes
+    /*
+    for (int id = 0; id < m; id++) {
+        if (B.is_bridge[id]) {
+            auto [u, v] = B.edges[id];
+            cout << u << " " << v << "\n";
+        }
     }
+    */
+
+    // 6. Consultar a qué componente 2ECC pertenece un nodo
+    // int c = B.comp[u];
+
+    // 7. Consultar si dos nodos pertenecen a la misma 2ECC
+    // bool same = (B.comp[u] == B.comp[v]);
+
+    // 8. Cantidad de componentes 2ECC
+    // int k = B.cnt;
+
+    // 9. Agrupar todos los nodos por componente 2ECC
+    vector<vector<int>> components(B.cnt);
+
+    for (int i = 0; i < n; i++) {
+        components[B.comp[i]].push_back(i);
+    }
+
+    // 10. Imprimir las componentes (solución del problema)
+    cout << B.cnt << "\n";
+
+    for (int i = 0; i < B.cnt; i++) {
+        cout << components[i].size();
+        for (int u : components[i])
+            cout << " " << u;
+        cout << "\n";
+    }
+
+    // 11. Recorrer el Bridge Tree (bosque de puentes)
+    /*
+    for (int c = 0; c < B.cnt; c++) {
+        for (int to : B.tree[c]) {
+            // Existe un puente entre las componentes c y to
+        }
+    }
+    */
+
+    // 12. Consultar tin y low de un vértice
+    // int discovery = B.tin[u];
+    // int lowest = B.low[u];
 
     return 0;
 }
