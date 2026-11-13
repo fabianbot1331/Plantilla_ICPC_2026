@@ -1,0 +1,53 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+void dfs(int &indice, vector<vector<int>> &g, vector<bool> &v, vector<int> &padre){
+    v[indice] = true;
+    for(int i = 0; i<g[indice].size();i++){
+        int r = g[indice][i];
+        if(!v[r]){
+            padre[r] = indice;
+            dfs(r, g, v, padre);
+        }
+    }
+}
+
+
+
+int main() {
+    int n, m; cin >> n >> m;
+    vector<vector<int>> g(n);
+    for(int i=0; i<m; i++){
+        int x, y; cin >> x >> y;
+        x--; y--;
+        g[x].push_back(y);
+        g[y].push_back(x);
+    }
+    for(int i=0; i<n; i++){
+        sort(g[i].begin(),g[i].end());
+    }
+    int u, v; cin >> u >> v;
+    u--;
+    v--;
+    stack<int> s;
+    vector<bool> visitado(n,false);
+    vector<int> padre(n,-1);
+    dfs(u, g, visitado, padre);
+    int y = v;
+    vector<int> path;
+    path.push_back(v);
+    bool flag = false;
+    while(y!=u){
+        if(y == -1){
+            flag = true;
+            break;
+        }
+        else{
+            path.push_back(padre[y]);
+            y = padre[y];
+        }
+    }
+    reverse(path.begin(),path.end());
+    if(flag) cout << "no solution";
+    else for(auto e:path) cout << e+1 << " ";
+}
