@@ -1,0 +1,66 @@
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+const ll INF = LLONG_MAX/4;
+
+long long x = -1;
+
+vector<ll> dijkstra(int s, vector<vector<pair<int,long long>>> &g) {
+
+    int n = g.size()-1;
+
+    vector<ll> dist(n+1, INF);
+
+    priority_queue<
+        pair<ll,int>,
+        vector<pair<ll,int>>,
+        greater<pair<ll,int>>
+    > pq;
+
+    dist[s] = 0;
+    pq.push({0, s});
+    vector<int> cantidad(n+1, INT_MAX);
+    cantidad[s] = 0;
+    while(!pq.empty()) {
+        auto [d, u] = pq.top();
+        pq.pop();
+
+        if(d != dist[u])
+            continue;
+
+        for(auto [v, w] : g[u]) {
+            if(dist[u] + w < dist[v] or(dist[u]+w == dist[v] and cantidad[u]+1<cantidad[v])) {
+                cantidad[v] = cantidad[u]+1;
+                dist[v] = dist[u] + w;
+                pq.push({dist[v], v});
+            }
+        }
+    }
+
+    x = cantidad[n];
+    return dist;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    
+    long long  n, p, q, m;
+    cin >> n >> p >> q >> m;
+    vector<vector<pair<int,long long>>> g(n+1, vector<pair<int,long long>>(n+1));
+    for(int i=1; i<=n; i++){
+        for(int j = 1; j<=n; j++){
+            long long w = ((i+j)*p%m + (i*j)%m*q%m)%m+1;
+            g[i][j] = {j, w};
+        }
+    }
+
+    vector<ll> dist = dijkstra(1, g);
+
+    if(n == 1) cout << 0 << " " << 0;
+    else{
+        cout << dist[n] << " " << x;
+    }
+}
