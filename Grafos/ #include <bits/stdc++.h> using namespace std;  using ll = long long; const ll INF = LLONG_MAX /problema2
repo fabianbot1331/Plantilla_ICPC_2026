@@ -1,0 +1,75 @@
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+const ll INF = LLONG_MAX / 4;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n;
+    ll p, q, m;
+    cin >> n >> p >> q >> m;
+
+    if(n == 1) {
+        cout << "0 0\n";
+        return 0;
+    }
+
+    vector<ll> dist(n + 1, INF);
+    vector<int> cantidad(n + 1, INT_MAX);
+    vector<bool> visitado(n + 1, false);
+
+    auto peso = [&](int u, int v) -> ll {
+        ll a = ((__int128)u + v) * p % m;
+        ll b = ((__int128)u * v % m) * q % m;
+        return ((__int128)a + b) % m + 1;
+    };
+
+    dist[1] = 0;
+    cantidad[1] = 0;
+
+    for(int i = 1; i <= n; i++) {
+        int u = -1;
+
+        for(int j = 1; j <= n; j++) {
+            if(visitado[j]) continue;
+
+            if(u == -1 ||
+               dist[j] < dist[u] ||
+               (dist[j] == dist[u] &&
+                cantidad[j] < cantidad[u])) {
+                u = j;
+            }
+        }
+
+        if(u == -1 || dist[u] == INF)
+            break;
+
+        visitado[u] = true;
+
+        if(u == n) break;
+
+        for(int v = 1; v <= n; v++) {
+            if(v == u || visitado[v])
+                continue;
+
+            ll w = peso(u, v);
+
+            ll nuevo = dist[u] + w;
+            int pasos = cantidad[u] + 1;
+
+            if(nuevo < dist[v] ||
+               (nuevo == dist[v] &&
+                pasos < cantidad[v])) {
+
+                dist[v] = nuevo;
+                cantidad[v] = pasos;
+            }
+        }
+    }
+
+    cout << dist[n] << " " << cantidad[n] << "\n";
+}
