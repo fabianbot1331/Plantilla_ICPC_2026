@@ -1,0 +1,481 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+/*
+  PLANTILLA DFS PARA ICPC / C++17
+  - Nodos 0-indexed; IDs de aristas 0-indexed, por orden de addEdge().
+  - Por defecto DFS ITERATIVO: evita stack overflow con n grande.
+  - runFrom(s) explora desde s; runAll() recorre todos los nodos restantes.
+  - Se agregan TODAS las aristas ANTES de ejecutar el primer DFS.
+  - Si cambias el grafo, construye una nueva instancia.
+  - runFrom(s, false) / runAll(false): variante RECURSIVA (solo n moderado).
+  - Para no dirigidos: componentes, arbol DFS, tin/tout, low, puentes,
+    articulaciones, subarboles, ciclo (vertices e IDs), bipartito.
+  - Para dirigidos: bosque DFS, tin/tout, cuatro tipos de arista,
+    ciclo (vertices e IDs), orden topologico, SCC (Kosaraju).
+  - Adicional: DFS en grillas con 4 vecinos.
+*/
+
+struct DFSUndirected {
+    int n, timer = 0, components = 0;
+    bool hasCycle = false, bipartite = true;
+    vector<vector<pair<int,int>>> adj; // {vecino, edge_id}
+    vector<pair<int,int>> edges;        // edges[id] = {u, v}
+    vector<vector<int>> tree;          // hijos en el bosque DFS
+    vector<int> parent, parentEdge, depth, tin, tout, low, sz;
+    vector<int> comp, pos, order, roots, childCount;
+    vector<char> vis, color, bridge, articulation, treeEdge;
+    vector<int> cycleVertices, cycleEdges; // primer ciclo encontrado
+
+    explicit DFSUndirected(int n) : n(n), adj(n), tree(n),
+        parent(n, -1), parentEdge(n, -1), depth(n, 0),
+        tin(n, -1), tout(n, -1), low(n, -1), sz(n, 0),
+        comp(n, -1), pos(n, -1), childCount(n, 0),
+        vis(n, 0), color(n, 0), articulation(n, 0) {}
+
+    int addEdge(int u, int v) {
+        assert(0 <= u && u < n && 0 <= v && v < n);
+        int id = (int)edges.size();
+        edges.push_back({u, v});
+        adj[u].push_back({v, id});
+        adj[v].push_back({u, id});
+        bridge.push_back(0);
+        treeEdge.push_back(0);
+        return id;
+    }
+
+    void enter(int u, int p, int pe, int cid) {
+        vis[u] = color[u] = 1;
+        parent[u] = p;
+        parentEdge[u] = pe;
+        comp[u] = cid;
+        sz[u] = 1;
+        if (p != -1) {
+            depth[u] = depth[p] + 1;
+            tree[p].push_back(u);
+            treeEdge[pe] = 1;
+        }
+        tin[u] = low[u] = timer++;
+        pos[u] = (int)order.size();
+        order.push_back(u);
+    }
+
+    void saveCycle(int u, int ancestor, int backId) {
+        if (!cycleEdges.empty()) return;
+        vector<int> verts, ids;
+        int x = u;
+        while (x != ancestor && x != -1) {
+            verts.push_back(x);
+            ids.push_back(parentEdge[x]);
+            x = parent[x];
+        }
+        if (x != ancestor) return;
+        reverse(verts.begin(), verts.end());
+        reverse(ids.begin(), ids.end());
+        cycleVertices.push_back(ancestor);
+        for (int v : verts) cycleVertices.push_back(v);
+        cycleVertices.push_back(ancestor);
+        cycleEdges = move(ids);
+        cycleEdges.push_back(backId);
+    }
+
+    void visitedNeighbor(int u, int v, int edgeId) {
+        // En no dirigidos omitimos solo la MISMA arista por la que entramos;
+        // otras aristas hacia el padre SI pueden formar ciclos de longitud 2.
+        hasCycle = true;
+        low[u] = min(low[u], tin[v]);
+        if (color[v] == 1) saveCycle(u, v, edgeId);
+    }
+
+    void leave(int u) {
+        color[u] = 2;
+        tout[u] = timer++;
+        int p = parent[u];
+        if (p == -1) {
+            if (childCount[u] > 1) articulation[u] = 1;
+        } else {
+            sz[p] += sz[u];
+            low[p] = min(low[p], low[u]);
+            if (low[u] > tin[p]) bridge[parentEdge[u]] = 1;
+            if (parent[p] != -1 && low[u] >= tin[p])
+                articulation[p] = 1;
+        }
+    }
+
+    void dfsRecursive(int u, int p, int pe, int cid) {
+        enter(u, p, pe, cid);
+        for (auto [v, eid] : adj[u]) {
+            if (eid == pe) continue;
+            if (!vis[v]) {
+                childCount[u]++;
+                dfsRecursive(v, u, eid, cid);
+            } else {
+                if ((depth[u] & 1) == (depth[v] & 1)) bipartite = false;
+                visitedNeighbor(u, v, eid);
+            }
+        }
+        leave(u);
+    }
+
+    void dfsIterative(int s, int cid) {
+        // Cada frame recuerda el SIGUIENTE vecino; simula la recursión.
+        struct Frame { int u, next; };
+        vector<Frame> st;
+        enter(s, -1, -1, cid);
+        st.push_back({s, 0});
+        while (!st.empty()) {
+            int u = st.back().u;
+            if (st.back().next == (int)adj[u].size()) {
+                st.pop_back();
+                leave(u);
+                continue;
+            }
+            auto [v, eid] = adj[u][st.back().next++];
+            if (eid == parentEdge[u]) continue;
+            if (!vis[v]) {
+                childCount[u]++;
+                enter(v, u, eid, cid);
+                st.push_back({v, 0});
+            } else {
+                if ((depth[u] & 1) == (depth[v] & 1)) bipartite = false;
+                visitedNeighbor(u, v, eid);
+            }
+        }
+    }
+
+    void runFrom(int s, bool iterative = true) {
+        assert(0 <= s && s < n);
+        if (vis[s]) return;
+        int cid = components++;
+        roots.push_back(s);
+        if (iterative) dfsIterative(s, cid);
+        else dfsRecursive(s, -1, -1, cid);
+    }
+
+    void runAll(bool iterative = true) {
+        for (int s = 0; s < n; ++s)
+            if (!vis[s]) runFrom(s, iterative);
+    }
+
+    bool sameComponent(int u, int v) const {
+        return vis[u] && vis[v] && comp[u] == comp[v];
+    }
+    bool isAncestor(int u, int v) const {
+        return sameComponent(u, v) &&
+               tin[u] <= tin[v] && tout[v] <= tout[u];
+    }
+
+    // Camino de la raiz DFS a v; no necesariamente mas corto.
+    vector<int> rootPath(int v) const {
+        if (!vis[v]) return {};
+        vector<int> path;
+        for (int x = v; x != -1; x = parent[x]) path.push_back(x);
+        reverse(path.begin(), path.end());
+        return path;
+    }
+
+    // Camino ENTRE u y v en el ARBOL DFS (no necesariamente camino mas corto).
+    vector<int> treePath(int u, int v) const {
+        if (!sameComponent(u, v)) return {};
+        vector<int> a, b;
+        int x = u, y = v;
+        while (depth[x] > depth[y]) { a.push_back(x); x = parent[x]; }
+        while (depth[y] > depth[x]) { b.push_back(y); y = parent[y]; }
+        while (x != y) {
+            a.push_back(x); b.push_back(y);
+            x = parent[x]; y = parent[y];
+        }
+        a.push_back(x); // LCA en el arbol DFS
+        reverse(b.begin(), b.end());
+        a.insert(a.end(), b.begin(), b.end());
+        return a;
+    }
+
+    // Intervalo [L,R) de los nodos del subarbol DFS de u en order[].
+    // Consultar cuando el DFS de u YA haya finalizado.
+    pair<int,int> subtreeRange(int u) const {
+        return {pos[u], pos[u] + sz[u]};
+    }
+};
+
+struct DFSDirected {
+    enum EdgeType { TREE = 0, BACK = 1, FORWARD = 2, CROSS = 3 };
+    struct SCCResult {
+        int count = 0;
+        vector<int> comp;             // comp[u] = ID de su SCC
+        vector<vector<int>> groups;   // vertices de cada SCC
+    };
+
+    int n, timer = 0, components = 0;
+    bool hasCycle = false;
+    vector<vector<pair<int,int>>> adj; // {destino, edge_id}
+    vector<pair<int,int>> edges;
+    vector<vector<int>> tree;
+    vector<int> parent, parentEdge, depth, tin, tout, sz;
+    vector<int> comp, pos, order, finishOrder, roots;
+    vector<int> edgeType;              // TREE / BACK / FORWARD / CROSS
+    vector<char> color;               // 0 blanco, 1 gris, 2 negro
+    vector<int> cycleVertices, cycleEdges;
+
+    explicit DFSDirected(int n) : n(n), adj(n), tree(n),
+        parent(n, -1), parentEdge(n, -1), depth(n, 0),
+        tin(n, -1), tout(n, -1), sz(n, 0),
+        comp(n, -1), pos(n, -1), color(n, 0) {}
+
+    int addEdge(int u, int v) {
+        assert(0 <= u && u < n && 0 <= v && v < n);
+        int id = (int)edges.size();
+        edges.push_back({u, v});
+        adj[u].push_back({v, id}); // IMPORTANTE: NO agregar la arista inversa
+        edgeType.push_back(-1);
+        return id;
+    }
+
+    void enter(int u, int p, int pe, int cid) {
+        color[u] = 1;
+        parent[u] = p;
+        parentEdge[u] = pe;
+        comp[u] = cid; // componente del BOSQUE DFS, NO SCC
+        sz[u] = 1;
+        if (p != -1) {
+            depth[u] = depth[p] + 1;
+            tree[p].push_back(u);
+            edgeType[pe] = TREE;
+        }
+        tin[u] = timer++;
+        pos[u] = (int)order.size();
+        order.push_back(u);
+    }
+
+    void saveCycle(int u, int ancestor, int backId) {
+        if (!cycleEdges.empty()) return;
+        vector<int> verts, ids;
+        int x = u;
+        while (x != ancestor && x != -1) {
+            verts.push_back(x);
+            ids.push_back(parentEdge[x]);
+            x = parent[x];
+        }
+        if (x != ancestor) return;
+        reverse(verts.begin(), verts.end());
+        reverse(ids.begin(), ids.end());
+        cycleVertices.push_back(ancestor);
+        for (int v : verts) cycleVertices.push_back(v);
+        cycleVertices.push_back(ancestor);
+        cycleEdges = move(ids);
+        cycleEdges.push_back(backId);
+    }
+
+    void exploreOld(int u, int v, int id) {
+        if (color[v] == 1) {
+            edgeType[id] = BACK;
+            hasCycle = true;
+            saveCycle(u, v, id);
+        } else {
+            // v ya esta terminado. Es descendiente si se descubrio despues.
+            edgeType[id] = (tin[u] < tin[v] ? FORWARD : CROSS);
+        }
+    }
+
+    void leave(int u) {
+        color[u] = 2;
+        tout[u] = timer++;
+        finishOrder.push_back(u);
+        if (parent[u] != -1) sz[parent[u]] += sz[u];
+    }
+
+    void dfsRecursive(int u, int p, int pe, int cid) {
+        enter(u, p, pe, cid);
+        for (auto [v, id] : adj[u]) {
+            if (color[v] == 0) dfsRecursive(v, u, id, cid);
+            else exploreOld(u, v, id);
+        }
+        leave(u);
+    }
+
+    void dfsIterative(int s, int cid) {
+        struct Frame { int u, next; };
+        vector<Frame> st;
+        enter(s, -1, -1, cid);
+        st.push_back({s, 0});
+        while (!st.empty()) {
+            int u = st.back().u;
+            if (st.back().next == (int)adj[u].size()) {
+                st.pop_back();
+                leave(u);
+                continue;
+            }
+            auto [v, id] = adj[u][st.back().next++];
+            if (color[v] == 0) {
+                enter(v, u, id, cid);
+                st.push_back({v, 0});
+            } else {
+                exploreOld(u, v, id);
+            }
+        }
+    }
+
+    void runFrom(int s, bool iterative = true) {
+        assert(0 <= s && s < n);
+        if (color[s] != 0) return;
+        int cid = components++;
+        roots.push_back(s);
+        if (iterative) dfsIterative(s, cid);
+        else dfsRecursive(s, -1, -1, cid);
+    }
+
+    void runAll(bool iterative = true) {
+        for (int s = 0; s < n; ++s)
+            if (color[s] == 0) runFrom(s, iterative);
+    }
+
+    bool isAncestor(int u, int v) const {
+        return color[u] != 0 && color[v] != 0 &&
+               comp[u] == comp[v] &&
+               tin[u] <= tin[v] && tout[v] <= tout[u];
+    }
+
+    vector<int> rootPath(int v) const {
+        if (color[v] == 0) return {};
+        vector<int> path;
+        for (int x = v; x != -1; x = parent[x]) path.push_back(x);
+        reverse(path.begin(), path.end());
+        return path;
+    }
+
+    pair<int,int> subtreeRange(int u) const {
+        return {pos[u], pos[u] + sz[u]};
+    }
+
+    static const char* edgeName(int type) {
+        switch (type) {
+            case TREE: return "TREE";
+            case BACK: return "BACK";
+            case FORWARD: return "FORWARD";
+            case CROSS: return "CROSS";
+            default: return "UNCLASSIFIED";
+        }
+    }
+
+    // Devuelve {} si hay un ciclo. Ejecuta DFS en nodos aun no visitados.
+    vector<int> topoSort() {
+        runAll();
+        if (hasCycle) return {};
+        vector<int> result = finishOrder;
+        reverse(result.begin(), result.end());
+        return result;
+    }
+
+    // Kosaraju iterativo. O(n+m). Las SCC son DISTINTAS de comp[].
+    SCCResult stronglyConnectedComponents() {
+        runAll();
+        vector<vector<int>> rev(n);
+        for (auto [u, v] : edges) rev[v].push_back(u);
+        SCCResult ans;
+        ans.comp.assign(n, -1);
+        for (int i = (int)finishOrder.size()-1; i >= 0; --i) {
+            int s = finishOrder[i];
+            if (ans.comp[s] != -1) continue;
+            int cid = ans.count++;
+            ans.groups.push_back({});
+            vector<int> st = {s};
+            ans.comp[s] = cid;
+            while (!st.empty()) {
+                int u = st.back(); st.pop_back();
+                ans.groups.back().push_back(u);
+                for (int v : rev[u]) if (ans.comp[v] == -1) {
+                    ans.comp[v] = cid;
+                    st.push_back(v);
+                }
+            }
+        }
+        return ans;
+    }
+};
+
+struct GridDFSResult {
+    int components = 0;
+    vector<int> sizes;
+    vector<vector<int>> comp; // -1 bloqueado, >=0 ID componente
+};
+
+// Casillas con caracter 'open' transitables. Movimiento en 4 direcciones.
+inline GridDFSResult dfsGrid4(const vector<string>& grid, char open = '.') {
+    int n = (int)grid.size();
+    int m = n ? (int)grid[0].size() : 0;
+    GridDFSResult result;
+    result.comp.assign(n, vector<int>(m, -1));
+    const int dr[4] = {-1, 1, 0, 0};
+    const int dc[4] = {0, 0, -1, 1};
+    for (int r = 0; r < n; ++r) for (int c = 0; c < m; ++c) {
+        if (grid[r][c] != open || result.comp[r][c] != -1) continue;
+        int cid = result.components++;
+        int size = 0;
+        vector<pair<int,int>> st = {{r,c}};
+        result.comp[r][c] = cid;
+        while (!st.empty()) {
+            auto [x,y] = st.back(); st.pop_back();
+            ++size;
+            for (int k = 0; k < 4; ++k) {
+                int nx = x + dr[k], ny = y + dc[k];
+                if (nx < 0 || nx >= n || ny < 0 || ny >= m) continue;
+                if (grid[nx][ny] != open || result.comp[nx][ny] != -1) continue;
+                result.comp[nx][ny] = cid;
+                st.push_back({nx,ny});
+            }
+        }
+        result.sizes.push_back(size);
+    }
+    return result;
+}
+
+
+// La plantilla completa esta incluida arriba.
+
+
+// ENTRADA: n m, seguido de m aristas u v (0-indexed).
+// Para 1-indexed: decrementar u y v al leer, sumar 1 al imprimir.
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n, m;
+    cin >> n >> m;
+    DFSUndirected g(n);
+    for (int i = 0; i < m; ++i) {
+        int u, v; cin >> u >> v;
+        g.addEdge(u, v);
+    }
+
+    // g.runFrom(0);        // SOLO nodos alcanzables desde 0
+    // g.runFrom(0, false); // Version RECURSIVA (cuidado con n grande)
+    g.runAll();             // DFS ITERATIVO en todo el grafo
+
+    cout << "Componentes: " << g.components << '\n';
+    cout << "Hay ciclo: " << (g.hasCycle ? "SI" : "NO") << '\n';
+    cout << "Bipartito: " << (g.bipartite ? "SI" : "NO") << '\n';
+    for (int u = 0; u < n; ++u) {
+        cout << "nodo=" << u
+             << " padre=" << g.parent[u]
+             << " prof=" << g.depth[u]
+             << " comp=" << g.comp[u]
+             << " tin=" << g.tin[u]
+             << " tout=" << g.tout[u]
+             << " low=" << g.low[u]
+             << " sz=" << g.sz[u]
+             << " articulacion=" << int(g.articulation[u]) << '\n';
+    }
+    for (int id = 0; id < m; ++id) {
+        if (g.bridge[id]) {
+            auto [u, v] = g.edges[id];
+            cout << "Puente ID " << id << ": " << u << " - " << v << '\n';
+        }
+    }
+    if (g.hasCycle) {
+        cout << "Vertices del primer ciclo: ";
+        for (int u : g.cycleVertices) cout << u << ' ';
+        cout << "\nIDs de las aristas del ciclo: ";
+        for (int id : g.cycleEdges) cout << id << ' ';
+        cout << '\n';
+    }
+}
